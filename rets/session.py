@@ -27,7 +27,7 @@ class Session(object):
     def __init__(self, login_url, username, password=None, version=None, http_auth='digest',
                  user_agent='Python RETS', user_agent_password=None, cache_metadata=True,
                  follow_redirects=True, use_post_method=True, metadata_format='COMPACT-DECODED',
-                 session_id_cookie_name='RETS-Session-ID'):
+                 session_id_cookie_name='RETS-Session-ID', copy_port=False):
         """
         Session constructor
         :param login_url: The login URL for the RETS feed
@@ -41,6 +41,7 @@ class Session(object):
         :param metadata_format: COMPACT_DECODED or STANDARD_XML. The client will attempt to set this automatically
         based on response codes from the RETS server.
         :param session_id_cookie_name: The session cookie name returned by the RETS server. Default is RETS-Session-ID
+        :param copy_port: Copy the port used for login across all subsequent HTTP requestsi (Rapattoni Style).  Default is False 
         """
         self.client = requests.Session()
         self.login_url = login_url
@@ -76,6 +77,9 @@ class Session(object):
 
         self.follow_redirects = follow_redirects
         self.use_post_method = use_post_method
+
+        self.copy_port = copy_port
+
         self.add_capability(name=u'Login', uri=self.login_url)
 
     def __enter__(self):
@@ -104,7 +108,12 @@ class Session(object):
                 raise ValueError("Cannot automatically determine absolute path for {0!s} given.".format(uri))
 
             parts = urlparse(login_url)
-            uri = parts.scheme + '://' + parts.hostname + '/' + uri.lstrip('/')
+            
+            portmod = ''
+            if parts.port and self.copy_port:
+                portmod = ':' + str(parts.port)
+            uri = parts.scheme + '://' + parts.hostname + portmod + '/' + uri.lstrip('/')
+
 
         self.capabilities[name] = uri
 
